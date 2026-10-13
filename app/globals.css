@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-serif: "Source Serif 4", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+html {
+  background-color: #eef1e7;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    background-color: #111712;
+  }
+}
+
+body {
+  color: #1f2a24;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    color: #e6ebe1;
+  }
+}
+
+/* Ledger ruled-paper background: faint horizontal lines like an accounting pad */
+.ledger-bg {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 35px,
+    rgba(31, 42, 36, 0.06) 35px,
+    rgba(31, 42, 36, 0.06) 36px
+  );
+}
+
+@media (prefers-color-scheme: dark) {
+  .ledger-bg {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent 35px,
+      rgba(230, 235, 225, 0.05) 35px,
+      rgba(230, 235, 225, 0.05) 36px
+    );
+  }
+}
+
+::selection {
+  background-color: #c9962c;
+  color: #1f2a24;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
