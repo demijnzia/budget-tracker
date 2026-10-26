@@ -1,7 +1,7 @@
 "use client";
 
 import { Transaction } from "@/lib/types";
-import { CATEGORY_ICONS, dayLabel, formatMoney } from "@/lib/utils";
+import { iconFor, dayLabel, formatMoney } from "@/lib/utils";
 
 export default function TransactionList({
   transactions,
@@ -59,7 +59,7 @@ export default function TransactionList({
                     className="w-8 h-8 flex items-center justify-center rounded-full text-sm flex-shrink-0"
                     style={{ backgroundColor: `${t.category.color}22` }}
                   >
-                    {CATEGORY_ICONS[t.category.icon] ?? "•"}
+                    {iconFor(t.category.icon)}
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="text-sm text-ink dark:text-paper truncate">

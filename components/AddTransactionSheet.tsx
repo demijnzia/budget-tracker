@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Category } from "@/lib/types";
-import { CATEGORY_ICONS } from "@/lib/utils";
+import { iconFor } from "@/lib/utils";
 
 export default function AddTransactionSheet({
   categories,
@@ -125,7 +125,7 @@ export default function AddTransactionSheet({
                     : "border-rule dark:border-rule-dark text-ink-soft dark:text-rule"
                 }`}
               >
-                <span className="text-lg leading-none">{CATEGORY_ICONS[c.icon] ?? "•"}</span>
+                <span className="text-lg leading-none">{iconFor(c.icon)}</span>
                 <span className="truncate w-full text-center">{c.name}</span>
               </button>
             ))}

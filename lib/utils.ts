@@ -54,3 +54,21 @@ export const CATEGORY_ICONS: Record<string, string> = {
   other: "•",
   dot: "•",
 };
+
+// Old categories store a keyword ("food"); new ones store the emoji itself.
+export function iconFor(icon: string | null | undefined): string {
+  if (!icon) return "•";
+  if (CATEGORY_ICONS[icon]) return CATEGORY_ICONS[icon];
+  return /^[a-z]+$/i.test(icon) ? "•" : icon;
+}
+
+export const ICON_GROUPS: { label: string; icons: string[] }[] = [
+  { label: "Food and drink", icons: ["🍚", "🍜", "🍣", "🍔", "🍕", "🥗", "🍱", "🥟", "🍢", "🍰", "🍩", "🍦", "☕", "🧋", "🍺", "🍷", "🛒", "🥬", "🍎", "🥖"] },
+  { label: "Getting around", icons: ["🚌", "🚇", "🚆", "🚄", "🚕", "🛵", "🚲", "🚗", "⛽", "🅿️", "✈️", "🚢", "🧳", "🏨", "🗺️", "🏖️"] },
+  { label: "Home and bills", icons: ["🏠", "🛋️", "🧹", "🔧", "💡", "🚿", "🔥", "📶", "📱", "💻", "🧾", "🏦", "🛡️", "📦", "🔑", "🪴"] },
+  { label: "Shopping and style", icons: ["🛍️", "👕", "👟", "👜", "💄", "💍", "🎧", "📷", "⌚", "🕶️", "🧸", "✂️", "💈", "🧴"] },
+  { label: "Health and fitness", icons: ["💊", "🩺", "🦷", "👓", "🏃", "🏋️", "🧘", "⚽", "🏀", "🎾", "🏊", "🚴"] },
+  { label: "Fun and social", icons: ["🎬", "🎮", "🎵", "🎤", "🎟️", "🎨", "📚", "🎉", "🎂", "🍻", "🎁", "🤝", "💐", "🎲", "🎳", "🏕️"] },
+  { label: "Family and pets", icons: ["👶", "👨‍👩‍👧", "🐾", "🐶", "🐱", "🎓", "✏️", "🏫"] },
+  { label: "Money", icons: ["💰", "💵", "💳", "📈", "🪙", "🏧", "🧧", "🎰", "💼", "🧮", "📊", "❤️"] },
+];

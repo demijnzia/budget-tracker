@@ -2,9 +2,20 @@
 
 import { useState } from "react";
 import { Category } from "@/lib/types";
-import { CATEGORY_ICONS } from "@/lib/utils";
+import { ICON_GROUPS, iconFor } from "@/lib/utils";
 
-const ICON_CHOICES = Object.keys(CATEGORY_ICONS).filter((k) => k !== "dot");
+
+// Keep just the first emoji if someone pastes or types several.
+function firstEmoji(text: string): string {
+  const t = text.trim();
+  if (!t) return "";
+  if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
+    const seg = new (Intl as unknown as { Segmenter: new (l?: string, o?: object) => { segment(s: string): Iterable<{ segment: string }> } }).Segmenter(undefined, { granularity: "grapheme" });
+    for (const part of seg.segment(t)) return part.segment;
+  }
+  return Array.from(t)[0] ?? "";
+}
+
 const COLOR_CHOICES = [
   "#B3452F",
   "#C9962C",
@@ -34,7 +45,7 @@ export default function CategoryManager({
 }) {
   const [type, setType] = useState<"EXPENSE" | "INCOME">("EXPENSE");
   const [name, setName] = useState("");
-  const [icon, setIcon] = useState(ICON_CHOICES[0]);
+  const [icon, setIcon] = useState(ICON_GROUPS[0].icons[0]);
   const [color, setColor] = useState(COLOR_CHOICES[0]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -95,7 +106,7 @@ export default function CategoryManager({
                 className="w-7 h-7 flex items-center justify-center rounded-full text-sm"
                 style={{ backgroundColor: `${c.color}22` }}
               >
-                {CATEGORY_ICONS[c.icon] ?? "•"}
+                {iconFor(c.icon)}
               </span>
               <span className="text-sm text-ink dark:text-paper flex-1">{c.name}</span>
               <button
@@ -122,18 +133,47 @@ export default function CategoryManager({
             className="mt-1 w-full bg-transparent border-b-2 border-rule dark:border-rule-dark outline-none text-ink dark:text-paper placeholder:text-ink-soft/40 py-1 mb-3"
           />
 
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {ICON_CHOICES.map((k) => (
-              <button
-                type="button"
-                key={k}
-                onClick={() => setIcon(k)}
-                className={`w-8 h-8 flex items-center justify-center rounded-full border text-sm ${
-                  icon === k ? "border-gold bg-gold/10" : "border-rule dark:border-rule-dark"
-                }`}
-              >
-                {CATEGORY_ICONS[k]}
-              </button>
+          <div className="flex items-center gap-3 mb-2">
+            <span
+              className="w-10 h-10 flex items-center justify-center rounded-full text-xl border border-gold bg-gold/10"
+              aria-label="Chosen icon"
+            >
+              {icon}
+            </span>
+            <label className="flex-1 text-xs text-ink-soft dark:text-rule">
+              Or type any emoji
+              <input
+                value=""
+                onChange={(e) => {
+                  const e1 = firstEmoji(e.target.value);
+                  if (e1) setIcon(e1);
+                }}
+                placeholder="Use your emoji keyboard"
+                className="block w-full bg-transparent border-b-2 border-rule dark:border-rule-dark outline-none text-base text-ink dark:text-paper placeholder:text-ink-soft/40 py-1"
+              />
+            </label>
+          </div>
+
+          <div className="max-h-52 overflow-y-auto border border-rule dark:border-rule-dark rounded-lg px-2 py-2 mb-3">
+            {ICON_GROUPS.map((g) => (
+              <div key={g.label} className="mb-2 last:mb-0">
+                <div className="text-xs text-ink-soft dark:text-rule mb-1">{g.label}</div>
+                <div className="flex flex-wrap gap-1">
+                  {g.icons.map((k) => (
+                    <button
+                      type="button"
+                      key={k}
+                      onClick={() => setIcon(k)}
+                      aria-label={`Icon ${k}`}
+                      className={`w-10 h-10 flex items-center justify-center rounded-full border text-lg ${
+                        icon === k ? "border-gold bg-gold/10" : "border-transparent"
+                      }`}
+                    >
+                      {k}
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
 
