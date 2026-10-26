@@ -60,6 +60,7 @@ Visit http://localhost:3000.
 - Donut chart of spending by category, with percentages
 - Add and remove your own categories (icon + color)
 - Entries grouped by day, running daily totals, tap to delete
+- Reports page: 12-month spending trend, daily totals for a month, and a per-category table with totals and percentages
 
 ## Import Taiwan e-invoices (載具)
 

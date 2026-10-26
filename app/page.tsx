@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import MonthNav from "@/components/MonthNav";
 import SummaryHero from "@/components/SummaryHero";
 import CategoryDonut, { CategorySlice } from "@/components/CategoryDonut";
@@ -112,11 +113,17 @@ export default function Home() {
   return (
     <main className="min-h-screen ledger-bg">
       <div className="max-w-md mx-auto px-4 pb-28 pt-6">
-        <header className="flex items-baseline justify-between mb-5">
+        <header className="flex flex-wrap items-baseline justify-between gap-2 mb-5">
           <h1 className="font-serif text-2xl font-semibold text-ink dark:text-paper">
             Ledger
           </h1>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/reports"
+              className="text-xs uppercase tracking-wide text-ink-soft dark:text-rule border border-rule dark:border-rule-dark rounded-full px-3 py-1.5 hover:border-ink dark:hover:border-paper transition-colors"
+            >
+              Reports
+            </Link>
             <button
               onClick={() => setShowImport(true)}
               className="text-xs uppercase tracking-wide text-ink-soft dark:text-rule border border-rule dark:border-rule-dark rounded-full px-3 py-1.5 hover:border-ink dark:hover:border-paper transition-colors"
