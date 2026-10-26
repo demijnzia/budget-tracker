@@ -9,26 +9,30 @@ real Postgres database, so it syncs across every device you sign in from
 
 - Next.js 14 (App Router) + TypeScript
 - Tailwind CSS
-- Prisma + PostgreSQL
+- Prisma + PostgreSQL on Supabase
 - Deployed on Vercel
 
-## 1. Get a free Postgres database
+## 1. Set up the Supabase database
 
-Pick one — both work identically with this app:
+1. In your Supabase project, click **Connect** at the top and copy two strings:
+   the **Transaction pooler** string (port 6543) and the **Session pooler**
+   string (port 5432).
+2. Put them in `.env` (see `.env.example`):
+   - `DATABASE_URL` is the Transaction pooler string, with `?pgbouncer=true` on
+     the end. The running app uses it.
+   - `DIRECT_URL` is the Session pooler string. `prisma db push` uses it.
+3. Replace `[YOUR-PASSWORD]` in both with your database password
+   (Project Settings → Database). If the password has special characters such
+   as `@` or `#`, URL-encode them.
 
-**Option A: Vercel Postgres (easiest, stays in one dashboard)**
-1. Go to your project on [vercel.com](https://vercel.com) → **Storage** tab → **Create Database** → **Postgres**.
-2. Once created, open the **.env.local** tab it shows you and copy the `DATABASE_URL` value.
-
-**Option B: Neon (also free, works outside Vercel too)**
-1. Create an account at [neon.tech](https://neon.tech) → **New Project**.
-2. Copy the connection string it gives you (starts with `postgresql://`).
+Free Supabase projects pause after about a week without use. If the app says it
+can't reach the database, restart the project from the Supabase dashboard.
 
 ## 2. Run it locally
 
 ```bash
 npm install
-cp .env.example .env      # then paste your DATABASE_URL into .env
+cp .env.example .env      # then fill in DATABASE_URL and DIRECT_URL
 npx prisma db push        # creates the tables in your database
 npm run db:seed           # adds starter categories (Food, Transport, Salary, etc.)
 npm run dev
@@ -40,16 +44,15 @@ Visit http://localhost:3000.
 
 1. Push this folder to a GitHub repo.
 2. Go to [vercel.com/new](https://vercel.com/new) and import that repo.
-3. In the project's **Settings → Environment Variables**, add `DATABASE_URL` with
-   your connection string (skip this if you used Vercel Postgres in step 1 —
-   it's already linked).
-4. Deploy. On the first deploy, run the schema push once against your
-   production database from your own machine:
+3. In the project's **Settings → Environment Variables**, add `DATABASE_URL` and
+   `DIRECT_URL` with the same values as your `.env`.
+4. Deploy. Create the tables once, from any machine that has this project and
+   your `.env` (a GitHub Codespace works from a tablet):
    ```bash
-   DATABASE_URL="your-production-connection-string" npx prisma db push
-   DATABASE_URL="your-production-connection-string" npm run db:seed
+   npx prisma db push
+   npm run db:seed
    ```
-5. Open your `.vercel.app` URL — your ledger is live.
+5. Open your `.vercel.app` URL. Your ledger is live.
 
 ## Features
 
