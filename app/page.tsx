@@ -7,6 +7,7 @@ import CategoryDonut, { CategorySlice } from "@/components/CategoryDonut";
 import TransactionList from "@/components/TransactionList";
 import AddTransactionSheet from "@/components/AddTransactionSheet";
 import CategoryManager from "@/components/CategoryManager";
+import ImportSheet from "@/components/ImportSheet";
 import { Category, Transaction } from "@/lib/types";
 
 type Summary = {
@@ -29,6 +30,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [importNote, setImportNote] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -113,13 +116,33 @@ export default function Home() {
           <h1 className="font-serif text-2xl font-semibold text-ink dark:text-paper">
             Ledger
           </h1>
-          <button
-            onClick={() => setShowCategories(true)}
-            className="text-xs uppercase tracking-wide text-ink-soft dark:text-rule border border-rule dark:border-rule-dark rounded-full px-3 py-1.5 hover:border-ink dark:hover:border-paper transition-colors"
-          >
-            Categories
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowImport(true)}
+              className="text-xs uppercase tracking-wide text-ink-soft dark:text-rule border border-rule dark:border-rule-dark rounded-full px-3 py-1.5 hover:border-ink dark:hover:border-paper transition-colors"
+            >
+              Import invoices
+            </button>
+            <button
+              onClick={() => setShowCategories(true)}
+              className="text-xs uppercase tracking-wide text-ink-soft dark:text-rule border border-rule dark:border-rule-dark rounded-full px-3 py-1.5 hover:border-ink dark:hover:border-paper transition-colors"
+            >
+              Categories
+            </button>
+          </div>
         </header>
+
+        {importNote && (
+          <div
+            role="status"
+            className="bg-credit/10 border border-credit/30 text-credit text-sm rounded-xl px-4 py-3 mb-5 flex justify-between gap-3"
+          >
+            <span>{importNote}</span>
+            <button aria-label="Dismiss" onClick={() => setImportNote(null)}>
+              ✕
+            </button>
+          </div>
+        )}
 
         <div className="bg-card dark:bg-card-dark border border-rule dark:border-rule-dark rounded-2xl px-4 py-4 mb-5">
           <MonthNav year={year} month={month} onChange={(y, m) => { setYear(y); setMonth(m); }} />
@@ -194,6 +217,22 @@ export default function Home() {
           categories={categories}
           onClose={() => setShowAdd(false)}
           onSubmit={handleAddTransaction}
+        />
+      )}
+
+      {showImport && (
+        <ImportSheet
+          categories={categories}
+          onClose={() => setShowImport(false)}
+          onDone={async ({ imported, skipped }) => {
+            setShowImport(false);
+            setImportNote(
+              `Imported ${imported} invoice${imported === 1 ? "" : "s"}` +
+                (skipped ? `. ${skipped} were already in your ledger.` : ".") +
+                " Use the month arrows to see older ones."
+            );
+            await load();
+          }}
         />
       )}
 

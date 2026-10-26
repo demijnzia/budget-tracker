@@ -59,6 +59,28 @@ Visit http://localhost:3000.
 - Add and remove your own categories (icon + color)
 - Entries grouped by day, running daily totals, tap to delete
 
+## Import Taiwan e-invoices (載具)
+
+1. Sign in to the Ministry of Finance e-invoice platform (財政部電子發票整合服務平台,
+   einvoice.nat.gov.tw) with your mobile barcode (手機條碼) account and open your
+   carrier invoice list. Download the invoice details for the months you want
+   as a CSV/text file. Menu names can change, so look for the carrier invoice
+   list and its download or export button.
+2. In the app, tap **Import invoices**, choose the file, check the preview,
+   change any wrong categories, and tap **Import**.
+3. Invoices are matched by invoice number, so importing the same file twice
+   adds nothing new. Cancelled (作廢) invoices are left out.
+
+The reader in `lib/einvoice.ts` finds columns by header name (發票日期, 發票號碼,
+商店店名, 總金額, 發票狀態 and a few alternatives), accepts pipe-delimited or
+comma-separated files, and understands ROC dates such as 1141025. If your file
+uses other header names, add them to the `HEADERS` list at the top of that
+file. Store names are matched to categories with the keyword list in the same
+file.
+
+After updating from an earlier version, run `npx prisma db push` once so the
+new `invoiceNo` column exists.
+
 ## Notes / possible next steps
 
 - There's currently no login — anyone with the URL can see and edit the data,

@@ -27,6 +27,7 @@ model Transaction {
   amount     Int // stored in cents to avoid float rounding issues
   type       TxType
   note       String?
+  invoiceNo  String?  @unique // set for entries imported from e-invoices, prevents duplicates
   date       DateTime
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
