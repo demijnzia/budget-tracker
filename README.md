@@ -46,12 +46,11 @@ Visit http://localhost:3000.
 2. Go to [vercel.com/new](https://vercel.com/new) and import that repo.
 3. In the project's **Settings → Environment Variables**, add `DATABASE_URL` and
    `DIRECT_URL` with the same values as your `.env`.
-4. Deploy. Create the tables once, from any machine that has this project and
-   your `.env` (a GitHub Codespace works from a tablet):
-   ```bash
-   npx prisma db push
-   npm run db:seed
-   ```
+4. Deploy. Create the tables once. The easiest way, which needs no computer, is
+   to open `prisma/setup.sql` in this repo, copy all of it, paste it into
+   Supabase → SQL Editor → New query, and press Run. It creates the tables and
+   the starter categories. (Developers can run `npx prisma db push` and
+   `npm run db:seed` from a machine that has your `.env` instead.)
 5. Open your `.vercel.app` URL. Your ledger is live.
 
 ## Features
