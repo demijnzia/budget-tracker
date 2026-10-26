@@ -114,7 +114,8 @@ type Group = {
   voided: boolean;
   totals: number[]; // values of a total column, one per line
   weaks: number[]; // values of a bare amount column, one per line
-  itemSums: number[]; // item amounts (or quantity x unit price)
+  rowSums: number[]; // 消費明細 amount on each line of the invoice (or quantity x unit price)
+  itemSums: number[]; // subtotals from separate D lines
   items: string[];
 };
 
@@ -131,6 +132,14 @@ export function parseInvoiceFile(text: string): ParseResult {
   const groups = new Map<string, Group>();
   let last: Group | null = null;
   let anon = 0;
+
+  // Some exports have no header line. Recognise the standard column order:
+  // 載具名稱, 發票日期, 發票號碼, 金額, 狀態, 是否中獎, 統編, 店名, 地址, (blank), 數量, 單價, 金額, 品名.
+  const first = splitLine(lines[0], delimiter);
+  if (first.length >= 13 && parseDate(first[1] ?? "") && /^[A-Za-z]{2}\d{8}$/.test(first[2] ?? "")) {
+    cols = { date: 1, total: 3, weak: -1, store: 7, invoice: 2, status: 4, iName: 13, iQty: 10, iPrice: 11, iAmt: 12 };
+    result.headerFound = true;
+  }
 
   for (const line of lines) {
     const cells = splitLine(line, delimiter);
@@ -203,6 +212,7 @@ export function parseInvoiceFile(text: string): ParseResult {
         voided: /作廢|void/i.test(status),
         totals: [],
         weaks: [],
+        rowSums: [],
         itemSums: [],
         items: [],
       };
@@ -211,7 +221,7 @@ export function parseInvoiceFile(text: string): ParseResult {
     last = g;
     if (totalV !== null) g.totals.push(totalV);
     if (weakV !== null) g.weaks.push(weakV);
-    if (itemAmt !== null) g.itemSums.push(itemAmt);
+    if (itemAmt !== null) g.rowSums.push(itemAmt);
     const name = cols.iName >= 0 ? cells[cols.iName] ?? "" : "";
     if (name) {
       const q = qty !== null && qty !== 1 ? ` ×${qty}` : "";
@@ -224,9 +234,11 @@ export function parseInvoiceFile(text: string): ParseResult {
       result.voided++;
       continue;
     }
-    // Invoice total: a total column if the file has one, otherwise the sum of the item lines.
+    // Invoice total. The 消費明細 amounts of all lines with this invoice number are added up first,
+    // because a total column in these files often holds a single line's value.
     let amount: number | null = null;
-    if (g.totals.length) amount = g.totals[0];
+    if (g.rowSums.length) amount = g.rowSums.reduce((a, b) => a + b, 0);
+    else if (g.totals.length) amount = g.totals[0];
     else if (g.itemSums.length) amount = g.itemSums.reduce((a, b) => a + b, 0);
     else if (g.weaks.length) {
       // Same value on every line means it is the invoice total repeated; different values are item amounts.
