@@ -1,47 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import MonthNav from "@/components/MonthNav";
-import TrendChart, { MonthPoint } from "@/components/TrendChart";
+import DailyChart from "@/components/DailyChart";
 import { formatMoney, iconFor } from "@/lib/utils";
 
 type Report = {
-  months: MonthPoint[];
   days: { date: string; total: number }[];
   categories: { name: string; icon: string; color: string; total: number }[];
 };
 
-const monthIndex = (y: number, m: number) => y * 12 + m;
-
 export default function ReportsPage() {
   const now = new Date();
   const [sel, setSel] = useState({ year: now.getFullYear(), month: now.getMonth() });
-  // The chart shows 12 months ending here. It only moves when you pick a month outside it.
-  const [end, setEnd] = useState({ year: now.getFullYear(), month: now.getMonth() });
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const choose = useCallback(
-    (year: number, month: number) => {
-      setSel({ year, month });
-      const idx = monthIndex(year, month);
-      const endIdx = monthIndex(end.year, end.month);
-      if (idx > endIdx) setEnd({ year, month });
-      else if (idx < endIdx - 11) {
-        const first = idx + 11;
-        setEnd({ year: Math.floor(first / 12), month: first % 12 });
-      }
-    },
-    [end]
-  );
 
   useEffect(() => {
     let cancelled = false;
     setError(null);
-    fetch(
-      `/api/reports?year=${sel.year}&month=${sel.month}&endYear=${end.year}&endMonth=${end.month}`
-    )
+    fetch(`/api/reports?year=${sel.year}&month=${sel.month}`)
       .then((r) => {
         if (!r.ok) throw new Error();
         return r.json();
@@ -51,7 +30,7 @@ export default function ReportsPage() {
     return () => {
       cancelled = true;
     };
-  }, [sel, end]);
+  }, [sel]);
 
   const monthTotal = report ? report.categories.reduce((s, c) => s + c.total, 0) : 0;
   const label = new Date(sel.year, sel.month, 1).toLocaleDateString(undefined, {
@@ -77,7 +56,7 @@ export default function ReportsPage() {
         </header>
 
         <div className="bg-card dark:bg-card-dark border border-rule dark:border-rule-dark rounded-2xl px-4 py-4 mb-5">
-          <MonthNav year={sel.year} month={sel.month} onChange={choose} />
+          <MonthNav year={sel.year} month={sel.month} onChange={(y, m) => setSel({ year: y, month: m })} />
         </div>
 
         {error && (
@@ -94,16 +73,12 @@ export default function ReportsPage() {
           <div className="flex flex-col gap-5">
             <section className="bg-card dark:bg-card-dark border border-rule dark:border-rule-dark rounded-2xl px-4 py-4">
               <h2 className="font-serif text-lg font-semibold text-ink dark:text-paper">
-                Monthly spending
+                Daily spending, {label}
               </h2>
               <p className="text-sm text-ink-soft dark:text-rule mb-3">
-                Last 12 months. Tap a bar to see that month below.
+                Tap a bar to see that day's total.
               </p>
-              <TrendChart
-                months={report.months}
-                selected={sel}
-                onSelect={(y, m) => choose(y, m)}
-              />
+              <DailyChart key={`${sel.year}-${sel.month}`} year={sel.year} month={sel.month} days={report.days} />
             </section>
 
             <section className="bg-card dark:bg-card-dark border border-rule dark:border-rule-dark rounded-2xl px-4 py-4">
@@ -174,7 +149,7 @@ export default function ReportsPage() {
 
             <section className="bg-card dark:bg-card-dark border border-rule dark:border-rule-dark rounded-2xl px-4 py-4">
               <h2 className="font-serif text-lg font-semibold text-ink dark:text-paper mb-2">
-                Daily spending, {label}
+                Daily totals, {label}
               </h2>
               {report.days.length === 0 ? (
                 <p className="text-sm text-ink-soft dark:text-rule py-4">
