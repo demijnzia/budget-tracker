@@ -35,18 +35,20 @@ export async function POST(req: NextRequest) {
     data.push({
       amount: unitsToCents(r.amount),
       type: "EXPENSE" as const,
-      note: r.note ? String(r.note).slice(0, 120) : null,
+      note: r.note ? String(r.note).slice(0, 300) : null,
       invoiceNo: r.invoiceNo ? String(r.invoiceNo).toUpperCase() : null,
       date: new Date(r.date),
       categoryId: r.categoryId,
     });
   }
 
-  // Rows whose invoice number is already stored are skipped.
-  const result = await prisma.transaction.createMany({ data, skipDuplicates: true });
+  // Importing an invoice again replaces the entry saved earlier for that invoice number,
+  // so a corrected file fixes old amounts instead of being skipped.
+  const invoiceNos = data.map((d) => d.invoiceNo).filter((n): n is string => !!n);
+  const [removed, created] = await prisma.$transaction([
+    prisma.transaction.deleteMany({ where: { invoiceNo: { in: invoiceNos } } }),
+    prisma.transaction.createMany({ data }),
+  ]);
 
-  return NextResponse.json({
-    imported: result.count,
-    skipped: data.length - result.count,
-  });
+  return NextResponse.json({ imported: created.count, replaced: removed.count });
 }

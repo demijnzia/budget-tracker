@@ -7,7 +7,9 @@ export type ParsedInvoice = {
   invoiceNo: string;
   date: string; // YYYY-MM-DD
   store: string;
-  amount: number; // whole currency units, e.g. 120.5
+  amount: number; // invoice total in whole currency units, e.g. 120.5
+  items: string; // item lines (消費明細), e.g. "御飯糰 ×2, 紅茶"
+  note: string; // store name plus items, ready to save
 };
 
 export type ParseResult = {
@@ -19,11 +21,21 @@ export type ParseResult = {
 
 const HEADERS = {
   date: ["發票日期", "消費日期", "開立日期", "日期", "date"],
-  amount: ["總金額", "消費金額", "發票金額", "金額", "合計", "amount", "total"],
+  // The invoice total. Used first when the file has one.
+  total: ["總金額", "發票金額", "消費金額", "合計", "total"],
+  // A bare "amount" column. It can be the invoice total or a single item, so it is checked against the other lines.
+  weak: ["金額", "amount"],
   store: ["商店店名", "店家名稱", "商店名稱", "賣方名稱", "賣方店名", "店名", "商家", "store", "merchant", "seller"],
   invoice: ["發票號碼", "發票編號", "invoice"],
   status: ["發票狀態", "狀態", "status"],
 } as const;
+
+const ITEM = {
+  name: /^消費明細.*(品名|品項|名稱)|^(品名|品項名稱|品項|item)$/i,
+  qty: /^消費明細.*數量|^(數量|qty|quantity)$/i,
+  price: /^消費明細.*單價|^(單價|unit.?price)$/i,
+  amount: /^消費明細.*(金額|小計)|^小計$/,
+};
 
 function splitLine(line: string, delimiter: string): string[] {
   if (delimiter === "|") return line.split("|").map((c) => c.trim());
@@ -57,6 +69,10 @@ function findColumn(cells: string[], names: readonly string[]): number {
   return -1;
 }
 
+function findLike(cells: string[], re: RegExp): number {
+  return cells.findIndex((c) => re.test(c.trim()));
+}
+
 export function parseDate(raw: string): string | null {
   const s = raw.trim();
   let m = s.match(/^(\d{4})[-/.]?(\d{1,2})[-/.]?(\d{1,2})(?!\d)/);
@@ -78,57 +94,158 @@ function parseAmount(raw: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+type Cols = {
+  date: number;
+  total: number;
+  weak: number;
+  store: number;
+  invoice: number;
+  status: number;
+  iName: number;
+  iQty: number;
+  iPrice: number;
+  iAmt: number;
+};
+
+type Group = {
+  invoiceNo: string;
+  date: string;
+  store: string;
+  voided: boolean;
+  totals: number[]; // values of a total column, one per line
+  weaks: number[]; // values of a bare amount column, one per line
+  itemSums: number[]; // item amounts (or quantity x unit price)
+  items: string[];
+};
+
 export function parseInvoiceFile(text: string): ParseResult {
-  const lines = text.replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim() !== "");
+  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter((l) => l.trim() !== "");
   const result: ParseResult = { rows: [], voided: 0, unreadable: 0, headerFound: false };
   if (lines.length === 0) return result;
 
   const pipes = lines.filter((l) => l.includes("|")).length;
   const delimiter = pipes > lines.length / 2 ? "|" : ",";
 
-  let cols: { date: number; amount: number; store: number; invoice: number; status: number } | null = null;
-  const seen = new Set<string>();
+  let cols: Cols | null = null;
+  let dCols: { invoice: number; name: number; amt: number } | null = null;
+  const groups = new Map<string, Group>();
+  let last: Group | null = null;
+  let anon = 0;
 
   for (const line of lines) {
     const cells = splitLine(line, delimiter);
 
-    const date = findColumn(cells, HEADERS.date);
-    const amount = findColumn(cells, HEADERS.amount);
-    if (date >= 0 && amount >= 0) {
-      cols = {
-        date,
-        amount,
-        store: findColumn(cells, HEADERS.store),
+    // Header of the line-item rows in the M/D layout: D|發票號碼|小計|品項名稱
+    if (cells[0] === "D" && findLike(cells, ITEM.name) >= 0 && findColumn(cells, HEADERS.date) < 0) {
+      dCols = {
         invoice: findColumn(cells, HEADERS.invoice),
-        status: findColumn(cells, HEADERS.status),
+        name: findLike(cells, ITEM.name),
+        amt: findLike(cells, ITEM.amount),
       };
+      continue;
+    }
+
+    const date = findColumn(cells, HEADERS.date);
+    const c: Cols = {
+      date,
+      total: findColumn(cells, HEADERS.total),
+      weak: findColumn(cells, HEADERS.weak),
+      store: findColumn(cells, HEADERS.store),
+      invoice: findColumn(cells, HEADERS.invoice),
+      status: findColumn(cells, HEADERS.status),
+      iName: findLike(cells, ITEM.name),
+      iQty: findLike(cells, ITEM.qty),
+      iPrice: findLike(cells, ITEM.price),
+      iAmt: findLike(cells, ITEM.amount),
+    };
+    if (date >= 0 && (c.total >= 0 || c.weak >= 0 || c.iAmt >= 0 || c.iPrice >= 0)) {
+      cols = c;
       result.headerFound = true;
       continue;
     }
     if (!cols) continue;
-    if (cells[0] === "D") continue; // line-item rows
+
+    if (cells[0] === "D") {
+      // line item that belongs to the invoice above
+      if (dCols) {
+        const key = dCols.invoice >= 0 ? (cells[dCols.invoice] ?? "").toUpperCase() : "";
+        const g = (key && groups.get(key)) || last;
+        const name = cells[dCols.name] ?? "";
+        if (g && name) g.items.push(name);
+        const amt = dCols.amt >= 0 ? parseAmount(cells[dCols.amt] ?? "") : null;
+        if (g && amt !== null) g.itemSums.push(amt);
+      }
+      continue;
+    }
 
     const d = parseDate(cells[cols.date] ?? "");
-    const a = parseAmount(cells[cols.amount] ?? "");
-    if (!d || a === null) {
+    const totalV = cols.total >= 0 ? parseAmount(cells[cols.total] ?? "") : null;
+    const weakV = cols.weak >= 0 ? parseAmount(cells[cols.weak] ?? "") : null;
+    const qty = cols.iQty >= 0 ? parseAmount(cells[cols.iQty] ?? "") : null;
+    const price = cols.iPrice >= 0 ? parseAmount(cells[cols.iPrice] ?? "") : null;
+    let itemAmt = cols.iAmt >= 0 ? parseAmount(cells[cols.iAmt] ?? "") : null;
+    if (itemAmt === null && price !== null) itemAmt = price * (qty ?? 1);
+
+    if (!d || (totalV === null && weakV === null && itemAmt === null)) {
       if (cells.length >= 4) result.unreadable++;
       continue;
     }
-    const status = cols.status >= 0 ? cells[cols.status] ?? "" : "";
-    if (/作廢|void/i.test(status)) {
+
+    const invoiceNo = (cols.invoice >= 0 ? cells[cols.invoice] ?? "" : "").toUpperCase();
+    const key = invoiceNo || `row-${anon++}`;
+    let g = groups.get(key);
+    if (!g) {
+      const status = cols.status >= 0 ? cells[cols.status] ?? "" : "";
+      g = {
+        invoiceNo,
+        date: d,
+        store: (cols.store >= 0 ? cells[cols.store] ?? "" : "") || "Invoice",
+        voided: /作廢|void/i.test(status),
+        totals: [],
+        weaks: [],
+        itemSums: [],
+        items: [],
+      };
+      groups.set(key, g);
+    }
+    last = g;
+    if (totalV !== null) g.totals.push(totalV);
+    if (weakV !== null) g.weaks.push(weakV);
+    if (itemAmt !== null) g.itemSums.push(itemAmt);
+    const name = cols.iName >= 0 ? cells[cols.iName] ?? "" : "";
+    if (name) {
+      const q = qty !== null && qty !== 1 ? ` ×${qty}` : "";
+      g.items.push(name + q);
+    }
+  }
+
+  for (const g of groups.values()) {
+    if (g.voided) {
       result.voided++;
       continue;
     }
-    const invoiceNo = (cols.invoice >= 0 ? cells[cols.invoice] ?? "" : "").toUpperCase();
-    if (invoiceNo) {
-      if (seen.has(invoiceNo)) continue;
-      seen.add(invoiceNo);
+    // Invoice total: a total column if the file has one, otherwise the sum of the item lines.
+    let amount: number | null = null;
+    if (g.totals.length) amount = g.totals[0];
+    else if (g.itemSums.length) amount = g.itemSums.reduce((a, b) => a + b, 0);
+    else if (g.weaks.length) {
+      // Same value on every line means it is the invoice total repeated; different values are item amounts.
+      const same = g.weaks.every((w) => w === g.weaks[0]);
+      amount = same ? g.weaks[0] : g.weaks.reduce((a, b) => a + b, 0);
     }
+    if (amount === null || !(amount > 0)) {
+      result.unreadable++;
+      continue;
+    }
+    amount = Math.round(amount * 100) / 100;
+    const items = g.items.join(", ");
     result.rows.push({
-      invoiceNo,
-      date: d,
-      store: (cols.store >= 0 ? cells[cols.store] ?? "" : "") || "Invoice",
-      amount: a,
+      invoiceNo: g.invoiceNo,
+      date: g.date,
+      store: g.store,
+      amount,
+      items,
+      note: items ? `${g.store}: ${items}` : g.store,
     });
   }
   return result;

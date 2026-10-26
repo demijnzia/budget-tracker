@@ -224,11 +224,11 @@ export default function Home() {
         <ImportSheet
           categories={categories}
           onClose={() => setShowImport(false)}
-          onDone={async ({ imported, skipped }) => {
+          onDone={async ({ imported, replaced }) => {
             setShowImport(false);
             setImportNote(
               `Imported ${imported} invoice${imported === 1 ? "" : "s"}` +
-                (skipped ? `. ${skipped} were already in your ledger.` : ".") +
+                (replaced ? `. ${replaced} replaced earlier entries.` : ".") +
                 " Use the month arrows to see older ones."
             );
             await load();

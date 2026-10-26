@@ -10,6 +10,8 @@ type PreviewRow = {
   date: string;
   store: string;
   amount: number;
+  items: string;
+  note: string;
   categoryId: string;
 };
 
@@ -20,7 +22,7 @@ export default function ImportSheet({
 }: {
   categories: Category[];
   onClose: () => void;
-  onDone: (summary: { imported: number; skipped: number }) => void;
+  onDone: (summary: { imported: number; replaced: number }) => void;
 }) {
   const expenseCats = categories.filter((c) => c.type === "EXPENSE");
   const [rows, setRows] = useState<PreviewRow[]>([]);
@@ -67,7 +69,7 @@ export default function ImportSheet({
             invoiceNo: r.invoiceNo,
             date: r.date,
             amount: r.amount,
-            note: r.store,
+            note: r.note,
             categoryId: r.categoryId,
           })),
         }),
@@ -91,7 +93,7 @@ export default function ImportSheet({
         </h2>
         <p className="text-sm text-ink-soft dark:text-rule mb-4">
           Choose the carrier invoice file you downloaded from the e-invoice website. Each invoice
-          becomes an expense, and invoices you imported before are skipped.
+          becomes an expense. If you import an invoice again, it replaces the entry you saved before.
         </p>
 
         <input
@@ -117,6 +119,9 @@ export default function ImportSheet({
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-ink dark:text-paper">{r.store}</div>
                     <div className="text-xs text-ink-soft dark:text-rule font-mono">{r.date}</div>
+                    {r.items && (
+                      <div className="truncate text-xs text-ink-soft dark:text-rule">{r.items}</div>
+                    )}
                   </div>
                   <select
                     aria-label={`Category for ${r.store}`}

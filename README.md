@@ -70,8 +70,11 @@ Visit http://localhost:3000.
    list and its download or export button.
 2. In the app, tap **Import invoices**, choose the file, check the preview,
    change any wrong categories, and tap **Import**.
-3. Invoices are matched by invoice number, so importing the same file twice
-   adds nothing new. Cancelled (作廢) invoices are left out.
+3. Each invoice becomes one entry with its total. When the file lists an invoice
+   on several lines, the lines are added up, and the item names (消費明細) go
+   into the entry's note. Importing an invoice again replaces the earlier entry
+   with the same invoice number, so you can fix mistakes by importing again.
+   Cancelled (作廢) invoices are left out.
 
 The reader in `lib/einvoice.ts` finds columns by header name (發票日期, 發票號碼,
 商店店名, 總金額, 發票狀態 and a few alternatives), accepts pipe-delimited or
