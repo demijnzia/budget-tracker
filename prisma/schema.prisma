@@ -15,12 +15,15 @@ enum TxType {
 
 model Category {
   id           String        @id @default(cuid())
-  name         String        @unique
+  name         String
+  userId       String? // null = built-in category shared by everyone, otherwise owned by that user
   icon         String        @default("dot")
   color        String        @default("#3B6B4A")
   type         TxType        @default(EXPENSE)
   createdAt    DateTime      @default(now())
   transactions Transaction[]
+
+  @@unique([userId, name])
 }
 
 model Transaction {
@@ -28,13 +31,15 @@ model Transaction {
   amount     Int // stored in cents to avoid float rounding issues
   type       TxType
   note       String?
-  invoiceNo  String?  @unique // set for entries imported from e-invoices, prevents duplicates
+  userId     String // Supabase user id of the owner
+  invoiceNo  String? // set for entries imported from e-invoices
   date       DateTime
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  @@index([date])
+  @@unique([userId, invoiceNo])
+  @@index([userId, date])
   @@index([categoryId])
 }

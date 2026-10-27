@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import MonthNav from "@/components/MonthNav";
 import DailyChart from "@/components/DailyChart";
+import AccountBar from "@/components/AccountBar";
 import { formatMoney, iconFor } from "@/lib/utils";
 
 type Report = {
@@ -22,6 +23,7 @@ export default function ReportsPage() {
     setError(null);
     fetch(`/api/reports?year=${sel.year}&month=${sel.month}`)
       .then((r) => {
+        if (r.status === 401) window.location.href = "/login";
         if (!r.ok) throw new Error();
         return r.json();
       })
@@ -189,6 +191,8 @@ export default function ReportsPage() {
             </section>
           </div>
         )}
+
+        <AccountBar />
       </div>
     </main>
   );

@@ -2,6 +2,7 @@
 -- Paste all of this into Supabase > SQL Editor > New query, then press Run.
 -- It is safe to run more than once. It matches prisma/schema.prisma, so you can
 -- use this instead of running `npx prisma db push`.
+-- Already have the tables from an earlier version? Run prisma/add-users.sql instead.
 
 DO $$ BEGIN
   CREATE TYPE "TxType" AS ENUM ('EXPENSE', 'INCOME');
@@ -11,6 +12,7 @@ END $$;
 CREATE TABLE IF NOT EXISTS "Category" (
   "id"        TEXT NOT NULL,
   "name"      TEXT NOT NULL,
+  "userId"    TEXT,
   "icon"      TEXT NOT NULL DEFAULT 'dot',
   "color"     TEXT NOT NULL DEFAULT '#3B6B4A',
   "type"      "TxType" NOT NULL DEFAULT 'EXPENSE',
@@ -23,6 +25,7 @@ CREATE TABLE IF NOT EXISTS "Transaction" (
   "amount"     INTEGER NOT NULL,
   "type"       "TxType" NOT NULL,
   "note"       TEXT,
+  "userId"     TEXT NOT NULL,
   "invoiceNo"  TEXT,
   "date"       TIMESTAMP(3) NOT NULL,
   "categoryId" TEXT NOT NULL,
@@ -31,9 +34,9 @@ CREATE TABLE IF NOT EXISTS "Transaction" (
   CONSTRAINT "Transaction_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS "Category_name_key" ON "Category"("name");
-CREATE UNIQUE INDEX IF NOT EXISTS "Transaction_invoiceNo_key" ON "Transaction"("invoiceNo");
-CREATE INDEX IF NOT EXISTS "Transaction_date_idx" ON "Transaction"("date");
+CREATE UNIQUE INDEX IF NOT EXISTS "Category_userId_name_key" ON "Category"("userId", "name");
+CREATE UNIQUE INDEX IF NOT EXISTS "Transaction_userId_invoiceNo_key" ON "Transaction"("userId", "invoiceNo");
+CREATE INDEX IF NOT EXISTS "Transaction_userId_date_idx" ON "Transaction"("userId", "date");
 CREATE INDEX IF NOT EXISTS "Transaction_categoryId_idx" ON "Transaction"("categoryId");
 
 DO $$ BEGIN
@@ -49,20 +52,25 @@ END $$;
 ALTER TABLE "Category" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Transaction" ENABLE ROW LEVEL SECURITY;
 
--- Starter categories (same as `npm run db:seed`).
-INSERT INTO "Category" ("id", "name", "icon", "color", "type") VALUES
-  (gen_random_uuid()::text, 'Food',          'food',          '#B3452F', 'EXPENSE'),
-  (gen_random_uuid()::text, 'Transport',     'transport',     '#C9962C', 'EXPENSE'),
-  (gen_random_uuid()::text, 'Shopping',      'shopping',      '#8A5A9E', 'EXPENSE'),
-  (gen_random_uuid()::text, 'Bills',         'bills',         '#3B6B4A', 'EXPENSE'),
-  (gen_random_uuid()::text, 'Health',        'health',        '#3C7A89', 'EXPENSE'),
-  (gen_random_uuid()::text, 'Entertainment', 'entertainment', '#C24E6B', 'EXPENSE'),
-  (gen_random_uuid()::text, 'Travel',        'travel',        '#4E7FC2', 'EXPENSE'),
-  (gen_random_uuid()::text, 'Social',        'social',        '#D97B4F', 'EXPENSE'),
-  (gen_random_uuid()::text, 'Home',          'home',          '#6B7A3B', 'EXPENSE'),
-  (gen_random_uuid()::text, 'Other',         'other',         '#7A7268', 'EXPENSE'),
-  (gen_random_uuid()::text, 'Salary',        'salary',        '#3B6B4A', 'INCOME'),
-  (gen_random_uuid()::text, 'Gift',          'gift',          '#C9962C', 'INCOME'),
-  (gen_random_uuid()::text, 'Investment',    'investment',    '#4E7FC2', 'INCOME'),
-  (gen_random_uuid()::text, 'Other Income',  'other',         '#7A7268', 'INCOME')
-ON CONFLICT ("name") DO NOTHING;
+-- Built-in categories, shared by every user (userId stays empty).
+INSERT INTO "Category" ("id", "name", "icon", "color", "type")
+SELECT gen_random_uuid()::text, v.name, v.icon, v.color, v.type::"TxType"
+FROM (VALUES
+  ('Food',          'food',          '#B3452F', 'EXPENSE'),
+  ('Transport',     'transport',     '#C9962C', 'EXPENSE'),
+  ('Shopping',      'shopping',      '#8A5A9E', 'EXPENSE'),
+  ('Bills',         'bills',         '#3B6B4A', 'EXPENSE'),
+  ('Health',        'health',        '#3C7A89', 'EXPENSE'),
+  ('Entertainment', 'entertainment', '#C24E6B', 'EXPENSE'),
+  ('Travel',        'travel',        '#4E7FC2', 'EXPENSE'),
+  ('Social',        'social',        '#D97B4F', 'EXPENSE'),
+  ('Home',          'home',          '#6B7A3B', 'EXPENSE'),
+  ('Other',         'other',         '#7A7268', 'EXPENSE'),
+  ('Salary',        'salary',        '#3B6B4A', 'INCOME'),
+  ('Gift',          'gift',          '#C9962C', 'INCOME'),
+  ('Investment',    'investment',    '#4E7FC2', 'INCOME'),
+  ('Other Income',  'other',         '#7A7268', 'INCOME')
+) AS v(name, icon, color, type)
+WHERE NOT EXISTS (
+  SELECT 1 FROM "Category" c WHERE c."userId" IS NULL AND c."name" = v.name
+);

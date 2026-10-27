@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getUserId, unauthorized } from "@/lib/auth";
 import { monthRange } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
+
   const { searchParams } = new URL(req.url);
   const year = Number(searchParams.get("year"));
   const month = Number(searchParams.get("month"));
@@ -17,7 +21,7 @@ export async function GET(req: NextRequest) {
   const { start, end } = monthRange(year, month);
 
   const transactions = await prisma.transaction.findMany({
-    where: { date: { gte: start, lt: end } },
+    where: { userId, date: { gte: start, lt: end } },
     include: { category: true },
   });
 

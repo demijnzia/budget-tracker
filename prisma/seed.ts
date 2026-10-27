@@ -22,21 +22,15 @@ const INCOME_CATEGORIES = [
   { name: "Other Income", icon: "other", color: "#7A7268" },
 ];
 
+// Built-in categories are shared by every user (userId stays null).
+async function addBuiltIn(c: { name: string; icon: string; color: string }, type: TxType) {
+  const exists = await prisma.category.findFirst({ where: { name: c.name, userId: null } });
+  if (!exists) await prisma.category.create({ data: { ...c, type, userId: null } });
+}
+
 async function main() {
-  for (const c of EXPENSE_CATEGORIES) {
-    await prisma.category.upsert({
-      where: { name: c.name },
-      update: {},
-      create: { ...c, type: TxType.EXPENSE },
-    });
-  }
-  for (const c of INCOME_CATEGORIES) {
-    await prisma.category.upsert({
-      where: { name: c.name },
-      update: {},
-      create: { ...c, type: TxType.INCOME },
-    });
-  }
+  for (const c of EXPENSE_CATEGORIES) await addBuiltIn(c, TxType.EXPENSE);
+  for (const c of INCOME_CATEGORIES) await addBuiltIn(c, TxType.INCOME);
   console.log("Seeded categories.");
 }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getUserId, unauthorized, visibleTo } from "@/lib/auth";
 import { unitsToCents } from "@/lib/utils";
 
 type Row = {
@@ -11,6 +12,9 @@ type Row = {
 };
 
 export async function POST(req: NextRequest) {
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
+
   const body = await req.json();
   const rows: Row[] = Array.isArray(body?.rows) ? body.rows : [];
 
@@ -19,7 +23,7 @@ export async function POST(req: NextRequest) {
   }
 
   const categoryIds = new Set(
-    (await prisma.category.findMany({ select: { id: true } })).map((c) => c.id)
+    (await prisma.category.findMany({ where: visibleTo(userId), select: { id: true } })).map((c) => c.id)
   );
 
   const data = [];
@@ -33,6 +37,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "One of the rows is invalid." }, { status: 400 });
     }
     data.push({
+      userId,
       amount: unitsToCents(r.amount),
       type: "EXPENSE" as const,
       note: r.note ? String(r.note).slice(0, 300) : null,
@@ -46,7 +51,7 @@ export async function POST(req: NextRequest) {
   // so a corrected file fixes old amounts instead of being skipped.
   const invoiceNos = data.map((d) => d.invoiceNo).filter((n): n is string => !!n);
   const [removed, created] = await prisma.$transaction([
-    prisma.transaction.deleteMany({ where: { invoiceNo: { in: invoiceNos } } }),
+    prisma.transaction.deleteMany({ where: { userId, invoiceNo: { in: invoiceNos } } }),
     prisma.transaction.createMany({ data }),
   ]);
 

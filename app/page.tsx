@@ -9,6 +9,7 @@ import TransactionList from "@/components/TransactionList";
 import AddTransactionSheet from "@/components/AddTransactionSheet";
 import CategoryManager from "@/components/CategoryManager";
 import ImportSheet from "@/components/ImportSheet";
+import AccountBar from "@/components/AccountBar";
 import { Category, Transaction } from "@/lib/types";
 
 type Summary = {
@@ -44,6 +45,10 @@ export default function Home() {
         fetch(`/api/summary?year=${year}&month=${month}`),
         fetch(`/api/categories`),
       ]);
+      if ([txRes, sumRes, catRes].some((r) => r.status === 401)) {
+        window.location.href = "/login";
+        return;
+      }
       if (!txRes.ok || !sumRes.ok || !catRes.ok) throw new Error("Request failed");
       const txData = await txRes.json();
       const sumData = await sumRes.json();
@@ -209,6 +214,8 @@ export default function Home() {
             </section>
           </>
         )}
+
+        <AccountBar />
       </div>
 
       <button

@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getUserId, unauthorized, visibleTo } from "@/lib/auth";
 import { monthRange, unitsToCents } from "@/lib/utils";
 import { TxType } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
+
   const { searchParams } = new URL(req.url);
   const year = Number(searchParams.get("year"));
   const month = Number(searchParams.get("month"));
@@ -18,7 +22,7 @@ export async function GET(req: NextRequest) {
   const { start, end } = monthRange(year, month);
 
   const transactions = await prisma.transaction.findMany({
-    where: { date: { gte: start, lt: end } },
+    where: { userId, date: { gte: start, lt: end } },
     include: { category: true },
     orderBy: [{ date: "desc" }, { createdAt: "desc" }],
   });
@@ -27,6 +31,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
+
   const body = await req.json();
   const { amount, type, note, date, categoryId } = body;
 
@@ -40,13 +47,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid transaction payload" }, { status: 400 });
   }
 
-  const category = await prisma.category.findUnique({ where: { id: categoryId } });
+  const category = await prisma.category.findFirst({
+    where: { id: categoryId, ...visibleTo(userId) },
+  });
   if (!category) {
     return NextResponse.json({ error: "Category not found" }, { status: 404 });
   }
 
   const transaction = await prisma.transaction.create({
     data: {
+      userId,
       amount: unitsToCents(amount),
       type: type as TxType,
       note: note || null,
