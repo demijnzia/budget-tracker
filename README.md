@@ -3,7 +3,7 @@
 A simple expense & income tracker: record daily transactions, organize them by
 category, and see a monthly breakdown with a donut chart. Data is stored in a
 real Postgres database, so it syncs across every device you sign in from
-(there's no login yet — see "Notes" below).
+and each of two people signs in with their own account and sees only their own entries.
 
 ## Stack
 
@@ -53,6 +53,31 @@ Visit http://localhost:3000.
    `npm run db:seed` from a machine that has your `.env` instead.)
 5. Open your `.vercel.app` URL. Your ledger is live.
 
+## Sign-in for two people
+
+The app is closed to anyone who isn't signed in. Each person has their own
+email and password and sees only their own entries and custom categories. The
+built-in starter categories are shared. Accounts live in Supabase, and nobody
+can sign up on their own, so only the two you create can get in.
+
+1. **Create the two users.** In Supabase: Authentication → Users → Add user →
+   Create new user. Enter an email and password and tick **Auto Confirm User**.
+   Do this twice.
+2. **Close sign-ups.** Authentication → Sign In / Providers → Email, and turn
+   off **Allow new users to sign up**.
+3. **Update the database.**
+   - Already using an earlier version with entries in it? Open
+     `prisma/add-users.sql`, change the email on the line marked `EDIT THIS`
+     to the first user's email, and run it in Supabase → SQL Editor. All
+     existing entries become that user's.
+   - New database? Run `prisma/setup.sql` instead.
+4. **Add two environment variables in Vercel** (Settings → Environment
+   Variables): `NEXT_PUBLIC_SUPABASE_URL` (the Project URL) and
+   `NEXT_PUBLIC_SUPABASE_ANON_KEY` (the anon or publishable key). Both are on
+   Supabase → Project Settings → API. Redeploy afterwards.
+5. Open the site, sign in, and use **Sign out** at the bottom of the page to
+   switch to the other person.
+
 ## Features
 
 - Add income/expense entries with amount, category, date, and an optional note
@@ -89,9 +114,8 @@ new `invoiceNo` column exists.
 
 ## Notes / possible next steps
 
-- There's currently no login — anyone with the URL can see and edit the data,
-  same as a shared spreadsheet. If you want it private, the simplest option is
-  to turn on **Vercel Authentication** (Settings → Deployment Protection) or
-  ask to have a login screen added.
+- Every query is limited to the signed-in user in the API routes. The database
+  tables also have row-level security switched on with no public policies, so
+  Supabase's own public API cannot read them.
 - Amounts are stored in cents internally to avoid floating-point rounding.
 - To change the currency symbol, edit `formatMoney` in `lib/utils.ts`.

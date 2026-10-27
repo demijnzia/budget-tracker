@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getUserId, unauthorized } from "@/lib/auth";
 import { monthRange } from "@/lib/utils";
 
 // Spending report for one month: total per day and total per category.
 // Amounts are in cents. Only expenses are counted.
 export async function GET(req: NextRequest) {
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
+
   const q = new URL(req.url).searchParams;
   const year = Number(q.get("year"));
   const month = Number(q.get("month"));
@@ -15,7 +19,7 @@ export async function GET(req: NextRequest) {
 
   const { start, end } = monthRange(year, month);
   const expenses = await prisma.transaction.findMany({
-    where: { type: "EXPENSE", date: { gte: start, lt: end } },
+    where: { userId, type: "EXPENSE", date: { gte: start, lt: end } },
     include: { category: true },
   });
 
