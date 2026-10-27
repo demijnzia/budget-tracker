@@ -5,9 +5,11 @@ import { iconFor, dayLabel, formatMoney } from "@/lib/utils";
 
 export default function TransactionList({
   transactions,
+  onEdit,
   onDelete,
 }: {
   transactions: Transaction[];
+  onEdit: (t: Transaction) => void;
   onDelete: (id: string) => void;
 }) {
   if (transactions.length === 0) {
@@ -55,6 +57,12 @@ export default function TransactionList({
                   key={t.id}
                   className="group flex items-center gap-3 px-1 py-2 rounded-md hover:bg-card dark:hover:bg-card-dark transition-colors"
                 >
+                  <button
+                    type="button"
+                    aria-label={`Edit ${t.category.name} entry`}
+                    onClick={() => onEdit(t)}
+                    className="flex items-center gap-3 min-w-0 flex-1 text-left"
+                  >
                   <span
                     className="w-8 h-8 flex items-center justify-center rounded-full text-sm flex-shrink-0"
                     style={{ backgroundColor: `${t.category.color}22` }}
@@ -79,10 +87,11 @@ export default function TransactionList({
                     {t.type === "EXPENSE" ? "−" : "+"}
                     {formatMoney(t.amount)}
                   </span>
+                  </button>
                   <button
                     aria-label="Delete entry"
                     onClick={() => onDelete(t.id)}
-                    className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-ink-soft dark:text-rule hover:text-debit transition-opacity text-xs px-1.5"
+                    className="[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 focus:opacity-100 text-ink-soft dark:text-rule hover:text-debit transition-opacity text-xs px-2 py-2"
                   >
                     ✕
                   </button>

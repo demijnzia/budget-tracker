@@ -31,6 +31,7 @@ export default function Home() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+  const [editing, setEditing] = useState<Transaction | null>(null);
   const [showCategories, setShowCategories] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [importNote, setImportNote] = useState<string | null>(null);
@@ -83,6 +84,29 @@ export default function Home() {
     });
     if (!res.ok) throw new Error("Failed");
     setShowAdd(false);
+    await load();
+  }
+
+  async function handleEditTransaction(data: {
+    amount: number;
+    type: "EXPENSE" | "INCOME";
+    note: string;
+    date: string;
+    categoryId: string;
+  }) {
+    if (!editing) return;
+    const res = await fetch(`/api/transactions/${editing.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...data, note: data.note.trim() || null }),
+    });
+    if (!res.ok) throw new Error("Failed");
+    // Show the month the entry now belongs to, in case the date moved.
+    const [y, m] = data.date.split("-").map(Number);
+    setYear(y);
+    setMonth(m - 1);
+    setView(data.type === "INCOME" ? "income" : "expense");
+    setEditing(null);
     await load();
   }
 
@@ -208,6 +232,7 @@ export default function Home() {
               ) : (
                 <TransactionList
                   transactions={filteredTransactions}
+                  onEdit={setEditing}
                   onDelete={handleDeleteTransaction}
                 />
               )}
@@ -225,6 +250,22 @@ export default function Home() {
       >
         +
       </button>
+
+      {editing && (
+        <AddTransactionSheet
+          key={editing.id}
+          categories={categories}
+          initial={editing}
+          onClose={() => setEditing(null)}
+          onSubmit={handleEditTransaction}
+          onDelete={async () => {
+            const res = await fetch(`/api/transactions/${editing.id}`, { method: "DELETE" });
+            if (!res.ok) throw new Error("Failed");
+            setEditing(null);
+            await load();
+          }}
+        />
+      )}
 
       {showAdd && (
         <AddTransactionSheet

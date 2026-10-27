@@ -1,15 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Category } from "@/lib/types";
+import { Category, Transaction } from "@/lib/types";
 import { iconFor } from "@/lib/utils";
 
 export default function AddTransactionSheet({
   categories,
+  initial,
+  onDelete,
   onClose,
   onSubmit,
 }: {
   categories: Category[];
+  initial?: Transaction; // when set, the sheet edits this entry instead of adding a new one
+  onDelete?: () => Promise<void>;
   onClose: () => void;
   onSubmit: (data: {
     amount: number;
@@ -19,11 +23,15 @@ export default function AddTransactionSheet({
     categoryId: string;
   }) => Promise<void>;
 }) {
-  const [type, setType] = useState<"EXPENSE" | "INCOME">("EXPENSE");
-  const [amount, setAmount] = useState("");
-  const [note, setNote] = useState("");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [categoryId, setCategoryId] = useState<string>("");
+  const editing = !!initial;
+  const [type, setType] = useState<"EXPENSE" | "INCOME">(initial?.type ?? "EXPENSE");
+  const [amount, setAmount] = useState(initial ? String(initial.amount / 100) : "");
+  const [note, setNote] = useState(initial?.note ?? "");
+  const [date, setDate] = useState(
+    () => initial?.date.slice(0, 10) ?? new Date().toISOString().slice(0, 10)
+  );
+  const [categoryId, setCategoryId] = useState<string>(initial?.categoryId ?? "");
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,7 +78,7 @@ export default function AddTransactionSheet({
       >
         <div className="w-10 h-1 bg-rule dark:bg-rule-dark rounded-full mx-auto mb-4 sm:hidden" />
         <h2 className="font-serif text-lg font-semibold text-ink dark:text-paper mb-4">
-          New entry
+          {editing ? "Edit entry" : "New entry"}
         </h2>
 
         <div className="grid grid-cols-2 gap-2 mb-4">
@@ -163,6 +171,49 @@ export default function AddTransactionSheet({
 
         {error && <p className="text-debit text-sm mb-3">{error}</p>}
 
+        {editing && onDelete && (
+          <div className="mb-3">
+            {confirmDelete ? (
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-ink dark:text-paper">Delete this entry?</span>
+                <span className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(false)}
+                    className="px-3 py-1.5 rounded-lg border border-rule dark:border-rule-dark text-ink dark:text-paper"
+                  >
+                    Keep
+                  </button>
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={async () => {
+                      setSubmitting(true);
+                      try {
+                        await onDelete();
+                      } catch {
+                        setError("Couldn't delete that entry. Try again.");
+                        setSubmitting(false);
+                      }
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-debit text-white font-semibold disabled:opacity-50"
+                  >
+                    Delete
+                  </button>
+                </span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className="text-sm text-debit underline underline-offset-2"
+              >
+                Delete this entry
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-2">
           <button
             type="button"
@@ -176,7 +227,7 @@ export default function AddTransactionSheet({
             disabled={submitting || filtered.length === 0}
             className="flex-1 py-2.5 rounded-lg bg-ink dark:bg-paper text-paper dark:text-ink text-sm font-semibold disabled:opacity-50"
           >
-            {submitting ? "Saving…" : "Save entry"}
+            {submitting ? "Saving…" : editing ? "Save changes" : "Save entry"}
           </button>
         </div>
       </form>
